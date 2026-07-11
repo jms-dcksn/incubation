@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import textwrap
+from datetime import datetime, timezone
 from typing import Any, Sequence
 
 from dotenv import load_dotenv
@@ -95,6 +96,44 @@ def build_agent(
         subagents=list(subagents),
         middleware=[CodeInterpreterMiddleware(**middleware_kwargs)],
     )
+
+
+def _seed_files(files: dict[str, str]) -> dict[str, Any]:
+    """Normalize plain ``path -> text`` pairs into Deep Agents virtual-FS entries.
+
+    The Deep Agents ``files`` state channel stores things verbatim — it does
+    *not* massage what you hand it on ``invoke``. Its filesystem tools then
+    assume two conventions that a naive seed dict violates, and both failures
+    are silent-ish enough to look like "the agent can't see my files":
+
+    1. **Absolute paths.** Keys must start with ``/``. ``glob``/``ls`` filter the
+       file set with ``path.startswith("/")``, so a relative key like
+       ``src/routes/login.js`` is dropped at the root and simply never found.
+    2. **``FileData`` values, not raw strings.** Each value must be a dict with
+       ``content``/``encoding``/timestamps. ``glob`` reads ``fd["modified_at"]``
+       to sort results, so a bare string value raises
+       ``TypeError: string indices must be integers`` the moment a match exists.
+
+    Seeding well-formed entries here means the interpreter's PTC tools
+    (``glob``/``read_file``) and every subagent — which share this same ``files``
+    channel — can discover and read the tree. (There is no per-subagent
+    filesystem isolation to work around; the earlier "can't find files" symptom
+    was entirely this malformed seed data.)
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    seeded: dict[str, Any] = {}
+    for path, content in files.items():
+        key = path if path.startswith("/") else "/" + path
+        if isinstance(content, dict):  # already a FileData dict — pass through
+            seeded[key] = content
+        else:
+            seeded[key] = {
+                "content": content,
+                "encoding": "utf-8",
+                "created_at": now,
+                "modified_at": now,
+            }
+    return seeded
 
 
 def _print_no_credentials(model: str) -> None:
@@ -180,7 +219,7 @@ def run_workflow(
 
     payload: dict[str, Any] = {"messages": [{"role": "user", "content": prompt}]}
     if files:
-        payload["files"] = files
+        payload["files"] = _seed_files(files)
 
     config = {"configurable": {"thread_id": thread_id}}
 

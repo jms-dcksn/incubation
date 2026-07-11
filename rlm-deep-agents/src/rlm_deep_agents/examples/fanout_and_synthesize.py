@@ -36,11 +36,40 @@ PROMPT = """
 Run a workflow that security-reviews every route file in this project.
 
 Steps:
-  1. Use tools.glob to find files matching "src/routes/**/*.js".
-  2. Dispatch one `reviewer` subagent per file, in parallel, via task().
-     Ask each to return structured findings (file, line, severity, description).
-  3. Merge all findings, sort by severity (high first), drop duplicates, and
-     return a single prioritized report of the top risks.
+
+Use file tools to find the route files (glob **/*.js from /).
+Dispatch one reviewer subagent per file, in parallel, via tools.task() from inside eval. Ask each to return structured findings (file, line, severity, description).
+Merge all findings, sort by severity (high first), drop duplicates, and return a single prioritized report of the top risks.
+Tool Usage Rules
+You have access to filesystem tools and a code interpreter (eval).
+
+Critical: You must NEVER call any tools directly as top-level tool calls. ALL tool calls — including glob, read_file, ls, and task — must happen inside eval() code blocks, using the tools.* prefix.
+
+Critical: The eval sandbox is stateful and shared across all eval calls in a single run. To avoid variable redeclaration errors, always wrap eval code in an async IIFE:
+
+// ✅ CORRECT — tools.* prefix, async IIFE wrapper, task() inside eval
+await eval({
+  code: `
+    (async () => {
+      const files = await tools.glob({ pattern: '**/*.js', path: '/' });
+      const routeFiles = files.filter(f => f.includes('/routes/'));
+      const results = await Promise.all(routeFiles.map(file =>
+        tools.task({
+          subagentType: 'reviewer',
+          label: 'review ' + file.split('/').pop(),
+          description: \`Security-review \${file}. Return { findings: [{ file, line, severity, description }] }\`
+        })
+      ));
+      return results;
+    })();
+  `
+});
+
+// ❌ WRONG — direct top-level tool calls, bare task()/glob(), const without IIFE
+glob({ pattern: '**/*.js' });
+task({ subagentType: 'reviewer', ... });
+const files = await tools.glob(...); // outside an IIFE — will cause redeclaration errors
+The only tools you may call directly (outside eval) are: write_todos() and eval() itself.
 """.strip()
 
 
@@ -57,7 +86,7 @@ def main() -> None:
     # PTC allowlist exposes the filesystem tools inside the interpreter as
     # tools.glob(...) / tools.readFile(...). Files are seeded into the Deep
     # Agents virtual filesystem so glob has something to find.
-    agent = build_agent(SUBAGENTS, ptc=["glob", "read_file"])
+    agent = build_agent(SUBAGENTS, ptc=["glob", "read_file", "ls", "write_file", "edit_file", "grep"])
     run_workflow(agent, PROMPT, files=SOURCE_TREE)
 
 
