@@ -4030,3 +4030,80 @@ Known open items for the implementer:
 
 - The Agent Chat UI's consent-card rendering (Task 8, `ui` service) uses the interrupt payload shape defined in Task 7. If the pinned UI version does not render arbitrary interrupt payloads with a clickable link, render the `authorize_url` as a plain markdown link in the interrupt's `reason` field as a fallback — the flow does not depend on custom UI components.
 - `test_e2e.py` patches `toolserver.auth.httpx.AsyncClient` module-wide. If the tool server later makes non-JWKS outbound calls, narrow the patch to a named client factory, mirroring the `idp_client` / `toolserver_client` pattern used elsewhere.
+
+---
+
+## Learning Experience Addendum (2026-08-15)
+
+This project is a learning vehicle (see `CLAUDE.md` and `docs/LEARNING-EXPERIENCE.md`).
+The adopted visual/interactive program changes the plan as follows. Task numbering below
+extends the original plan; existing task bodies are modified only where stated.
+
+### Modification to Task 1: `obs` gains a fire-and-forget event sink
+
+In addition to stdout JSON, `log_event` posts each **already-redacted** event to an
+optional collector when `LENS_URL` is set:
+
+- New: `obs.sink.emit(payload: dict) -> None` — non-blocking (background task or
+  short-timeout best-effort), ~200ms timeout, all failures swallowed silently. Redaction
+  runs **before** emission — the sink sits inside the same "safe to read" boundary as
+  stdout.
+- Constraint (add to Global Constraints): **observability must never create coupling.**
+  New tests in `tests/test_obs.py`: (a) with `LENS_URL` unset, no outbound call is
+  attempted; (b) with the sink unreachable, `log_event` still returns and stdout output
+  is unchanged; (c) the sink payload passes through the same redaction as the log line.
+- The pedagogical point belongs in the module docstring: telemetry is a distributed
+  dependency like any other, and this is how you keep it off the critical path.
+
+### New Task 10: The Lens — live trace viewer (`:8090`)
+
+A sixth process, `services/lens/`, deliberately dependency-light (FastAPI + one static
+HTML page + Mermaid rendered client-side from a vendored JS file; no build step, no
+framework).
+
+**Produces:**
+- `POST /events` — ingest from the `obs` sink; appends to an in-memory per-`trace_id`
+  ring buffer (cap ~200 traces).
+- `GET /traces` / `GET /traces/{trace_id}` — JSON listing and detail.
+- `GET /stream` — SSE feed of new events for live rendering.
+- `GET /` — the viewer: left pane lists traces; main pane renders the selected trace as
+  a sequence diagram (five fixed lanes: ui, agent, proxy, toolserver, idp) that grows as
+  events arrive. Clicking an event shows the raw JSON plus a `file.py:line` source
+  reference carried in an optional `src` field on `log_event` calls (add `src=` only to
+  the ~15 story-critical events; do not annotate every line).
+- A second view, **"Where is the token?"**: five process boxes plus a "model context /
+  checkpoint" box; `token.issued`/`token.stored`/`tool.forwarded` events light the vault
+  and the per-request wire; the agent/model/checkpoint boxes stay visibly dark all run.
+
+**Tests** (`tests/test_lens.py`, ASGI transport): ingest groups by trace id; SSE stream
+delivers a posted event; ring buffer evicts oldest; unknown-service events are still
+accepted (the lens is a viewer, not a validator).
+
+**Sequencing:** build any time after Task 5 — it makes Tasks 6–8 much easier to debug —
+but no core task may depend on it (that is the point).
+
+### Modification to Task 8: compose gains the lens
+
+Add the `lens` service on `:8090` to `docker-compose.yml` and set `LENS_URL` on the
+other five services. The e2e test does **not** involve the lens; add one compose-level
+smoke check that the stack answers the demo question with the lens container stopped.
+
+### Modification to Task 9: docs become triptychs, plus the motivating narrative
+
+- `docs/FLOW.md`: each of the twelve steps becomes a **triptych** — (1) a small mermaid
+  sequence fragment highlighting the active hop, (2) the captured real log lines for
+  that step filtered to one trace id, (3) the emitting code referenced as
+  `path/file.py:line`. Prose still explains *why this step lives on this service and not
+  another*. The "Where is the token?" table remains the punchline.
+- New: `docs/00-WHY-FIVE-PROCESSES.md` — derives the architecture by starting from a
+  single-process tutorial agent and applying one attack/requirement at a time until the
+  five processes assemble themselves (outline in `docs/LEARNING-EXPERIENCE.md` §5).
+- New: `walkthroughs/` — numbered, guided sessions with predict-then-run exercises
+  (sequence outlined in `docs/LEARNING-EXPERIENCE.md` §4). Write `00` and `01` alongside
+  Task 9; later numbers land with the features they cover.
+
+### Deferred (no tasks yet — added when picked up)
+
+Chaos panel, JWT inspector with tamper toggle, prompt-injection attack lab, LangGraph
+state X-ray. All layer onto the lens; none touch the five core services beyond small
+debug endpoints. See `docs/LEARNING-EXPERIENCE.md` §§6–9.
