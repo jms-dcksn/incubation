@@ -173,6 +173,11 @@ Deliverables alongside the code:
 
 - `docs/FLOW.md` — an annotated log transcript of the full happy path, every line
   explained, with the token's location called out at each step.
+- `docs/code-walkthroughs/` — one short document per code section that carries an idea
+  (the vault, the token attach, the tool filter, the durable pause, the token check, and
+  a few more). Diagram first, then pseudo code, then the real lines, in plain words for
+  a reader new to distributed systems. Format and rules in
+  `docs/LEARNING-EXPERIENCE.md` §6.
 - `docs/THREAT-MODEL.md` — what each control defends against, and what it does not.
 - Deliberate failure walkthroughs: user denies consent, token expires mid-run, refresh
   fails, the interrupt is abandoned, the proxy is unreachable. Each with the log trace and

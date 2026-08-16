@@ -4102,8 +4102,81 @@ smoke check that the stack answers the demo question with the lens container sto
   (sequence outlined in `docs/LEARNING-EXPERIENCE.md` §4). Write `00` and `01` alongside
   Task 9; later numbers land with the features they cover.
 
+### New Task 11: Code walkthroughs — the eight sections that carry the ideas
+
+Short, picture-first explanations of the code where a *concept* lives, written for a
+reader who codes daily but has not designed a system split across processes. Full
+specification — reader, structure, writing rules, and a worked example — in
+`docs/LEARNING-EXPERIENCE.md` §6. This task is the checklist; that section is the spec.
+
+**Files:**
+- Create: `docs/code-walkthroughs/README.md` (index + how to read these)
+- Create: `docs/code-walkthroughs/01-tracing-and-redaction.md` (`libs/obs`)
+- Create: `docs/code-walkthroughs/02-the-vault.md` (`proxy/vault.py`)
+- Create: `docs/code-walkthroughs/03-matching-the-reply-to-the-request.md` (`proxy/oauth.py`, PKCE + `state`)
+- Create: `docs/code-walkthroughs/04-attaching-the-token.md` (`proxy/routes_tools.py`, `call_tool`)
+- Create: `docs/code-walkthroughs/05-tools-from-a-manifest.md` (`proxy/manifest.py`)
+- Create: `docs/code-walkthroughs/06-missing-beats-refused.md` (`middleware.py`, `wrap_model_call`)
+- Create: `docs/code-walkthroughs/07-a-pause-that-survives.md` (`middleware.py`, interrupt + resume)
+- Create: `docs/code-walkthroughs/08-check-it-yourself.md` (`toolserver/auth.py`)
+- Create: `docs/GLOSSARY.md` — every term the walkthroughs introduce, one plain line each
+- Modify: `docs/FLOW.md`, `README.md` (cross-links)
+
+**Interfaces:**
+- Consumes: the merged code for each section, plus the captured trace from Task 9.
+- Produces: the shortest path from "I can read Python" to "I can see why this is five
+  processes".
+
+- [ ] **Step 1: Write the index and the glossary skeleton**
+
+`docs/code-walkthroughs/README.md`: the eight-row table from `LEARNING-EXPERIENCE.md`
+§6, one line on how these differ from `FLOW.md` triptychs and `walkthroughs/`, and a
+suggested reading order (04 → 02 → 06 → 07 → 08 → 01 → 03 → 05: start where the idea is
+most concrete, not where the code loads first).
+
+- [ ] **Step 2: Write one document per section, in the fixed five-part shape**
+
+Each: **the question** (one sentence) → **picture first** (mermaid, before any code) →
+**the shape** (10–15 lines of pseudo code, names and order only) → **the real thing**
+(trimmed real code + `path/file.py:line`) → **what breaks without it** (one paragraph +
+a predict-then-run prompt). One labelled everyday analogy per document, including where
+it stops being true.
+
+- [ ] **Step 3: Apply the writing rules as an edit pass**
+
+Per document: one idea; at most two new terms, each defined in one plain line at first
+use and present in `docs/GLOSSARY.md`; roughly 250 words of prose outside code and
+diagrams; at least as much diagram as prose; no *simply / obviously / just / trivially /
+of course*; HTML only where markdown cannot show a before/after side by side, and still
+readable as plain text; no JavaScript in docs.
+
+- [ ] **Step 4: Verify every anchor**
+
+Every `path/file.py:line` reference resolves and points at the lines quoted; every code
+snippet is a trim of real code (cuts marked `# ...`), not a paraphrase; every log line
+quoted appears in the captured trace from Task 9 Step 1.
+
+- [ ] **Step 5: Cross-link**
+
+Each `FLOW.md` triptych step links to the walkthrough for the code it shows; each
+walkthrough links back to the step where the reader can watch it run, and to the
+`walkthroughs/` session that exercises it.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add agents-distributed-systems/docs
+git commit -m "docs: code walkthroughs for the sections that carry the concepts"
+```
+
+**Sequencing:** the eight documents do not need to land together. When a task in this
+plan merges one of the eight sections, its walkthrough is written or updated **in the
+same commit** — a walkthrough describing code that has since changed is worse than no
+walkthrough. Task 11 is the backstop that confirms all eight exist, obey the rules, and
+cross-link.
+
 ### Deferred (no tasks yet — added when picked up)
 
 Chaos panel, JWT inspector with tamper toggle, prompt-injection attack lab, LangGraph
 state X-ray. All layer onto the lens; none touch the five core services beyond small
-debug endpoints. See `docs/LEARNING-EXPERIENCE.md` §§6–9.
+debug endpoints. See `docs/LEARNING-EXPERIENCE.md` §§7–10.

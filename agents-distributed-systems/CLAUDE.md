@@ -45,7 +45,14 @@ Consequences for anyone (human or agent) working in this repo:
    diagram-plus-log-plus-code walkthroughs before prose. `docs/LEARNING-EXPERIENCE.md`
    defines the agreed visual/interactive program; keep it and the implementation plan in
    sync when either changes.
-6. **Failure is curriculum.** Deliberate failure scenarios (denied consent, expired
+6. **Explain the code that carries an idea.** A handful of code sections do the
+   teaching; each gets a short document in `docs/code-walkthroughs/` — picture first,
+   then pseudo code, then the real lines. Written for someone who codes every day but
+   has never designed a system split across processes: plain words, one idea per
+   document, an everyday analogy, and no term used before it is defined. The list of
+   sections, the fixed five-part shape, and the writing rules are in
+   `docs/LEARNING-EXPERIENCE.md` §6; the checklist is Task 11 in the plan.
+7. **Failure is curriculum.** Deliberate failure scenarios (denied consent, expired
    tokens, dead proxy) are first-class deliverables, not edge cases. When adding a
    feature, ask what its failure walkthrough looks like.
 
@@ -75,7 +82,13 @@ reason to exist:
 - Follow the implementation plan task-by-task (tests first). Check off plan steps as
   they complete.
 - When a task lands, update the corresponding walkthrough/doc in the same commit — docs
-  that lag the code are worse than no docs here.
+  that lag the code are worse than no docs here. This includes the code walkthrough for
+  any of the eight teaching sections the task touches.
+- Write for a reader who reads Python comfortably and has built API integrations, but
+  has never designed a system split across processes. Prefer the short word. Define a
+  term the first time it appears and add it to `docs/GLOSSARY.md`. Avoid *simply*,
+  *obviously*, *just*, *trivially*, *of course* — nothing should make a reader feel late
+  to something.
 - Reference code from docs as `path/to/file.py:line` so diagrams and prose stay anchored
   to real code.
 - Mermaid diagrams render on GitHub; prefer them for sequence/state/flow diagrams so the
