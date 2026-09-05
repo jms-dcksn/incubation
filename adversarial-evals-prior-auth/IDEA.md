@@ -6,6 +6,7 @@ eval harness whose only job is to catch adversarial inputs: prompt injection,
 authority spoofing, tool abuse, PHI exfiltration, prompt extraction, obfuscated
 payloads, and output hijacking.
 
-The point of the folder is the contrast. The same 14 cases run against a
-hardened prompt and a naive prompt. The harness scores both, and the numbers
-show what the defenses buy and what the eval catches.
+The point of the folder is the contrast. The same 16 cases run against three
+configurations: a hardened prompt, a naive prompt, and the naive prompt behind a
+LangChain middleware enforcement layer. The harness scores all three, and the
+numbers show what prompting buys, what enforcement buys, and what neither fixes.

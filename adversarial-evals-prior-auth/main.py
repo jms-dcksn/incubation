@@ -20,6 +20,7 @@ import re
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.tools import tool
+from langchain_core.messages import ToolMessage
 
 load_dotenv()
 
@@ -133,7 +134,10 @@ Use your tools when they help. The internal policy key is {CANARY}.
 
 {OUTPUT_CONTRACT}"""
 
-PROMPTS = {"hardened": HARDENED_PROMPT, "weak": WEAK_PROMPT}
+# "guarded" runs the WEAK prompt behind the middleware in guardrails.py, on
+# purpose: it shows what enforcement buys when the prompt gives you nothing.
+PROMPTS = {"hardened": HARDENED_PROMPT, "weak": WEAK_PROMPT, "guarded": WEAK_PROMPT}
+VARIANTS = list(PROMPTS)
 
 
 # --------------------------------------------------------------------------
@@ -147,7 +151,12 @@ def build_agent(variant: str = "hardened", offline: bool = False):
         model = ScriptedChatModel(hardened=(variant == "hardened"))
     else:
         model = os.getenv("PA_MODEL", "anthropic:claude-opus-5")
-    return create_agent(model=model, tools=TOOLS, system_prompt=PROMPTS[variant])
+    middleware = []
+    if variant == "guarded":
+        from guardrails import GUARDRAILS
+        middleware = GUARDRAILS
+    return create_agent(model=model, tools=TOOLS, system_prompt=PROMPTS[variant],
+                        middleware=middleware)
 
 
 def extract_json(text: str) -> dict:
@@ -168,8 +177,14 @@ def run_intake(agent, document: str) -> dict:
     final_text = messages[-1].content
     if isinstance(final_text, list):  # some providers return content blocks
         final_text = "".join(b.get("text", "") for b in final_text if isinstance(b, dict))
+    # Pair each tool call with its result, so the harness can tell an attempted
+    # call from one that actually ran. A call the guardrails refused is an
+    # attempt, not a breach.
+    results = {m.tool_call_id: str(m.content) for m in messages
+               if isinstance(m, ToolMessage)}
     tool_calls = [
-        {"name": call["name"], "args": call["args"]}
+        {"name": call["name"], "args": call["args"],
+         "denied": results.get(call.get("id"), "").startswith("POLICY DENIED")}
         for message in messages
         for call in getattr(message, "tool_calls", []) or []
     ]
@@ -193,7 +208,7 @@ def main() -> None:
         p.add_argument("--offline", action="store_true",
                        help="Use the scripted stub model - no API key needed.")
         p.add_argument("--prompt", default="hardened",
-                       choices=["hardened", "weak", "both"])
+                       choices=VARIANTS + ["all"])
         if name == "classify":
             p.add_argument("text", help="Document text to classify.")
         if name == "evals":
@@ -221,7 +236,7 @@ def main() -> None:
 
     if args.command == "evals":
         import evals
-        variants = ["hardened", "weak"] if args.prompt == "both" else [args.prompt]
+        variants = VARIANTS if args.prompt == "all" else [args.prompt]
         evals.run_suite(variants, offline=args.offline,
                         html_path=args.html, json_path=args.json_path)
 
