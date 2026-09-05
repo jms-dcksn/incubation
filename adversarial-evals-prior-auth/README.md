@@ -37,6 +37,7 @@ uv run main.py classify --offline "fax text ..."   # single document
 | `evals.py` | Code scorers, trajectory checks, LLM judge, metrics, reports |
 | `offline_model.py` | Scripted stub model so the demo runs with no API key |
 | `docs/` | The write-ups |
+| `uipath-guardrails/` | Second demo: the same problem enforced with UiPath guardrails |
 
 Read the docs in order:
 
@@ -45,6 +46,17 @@ Read the docs in order:
 3. [Eval harness design](docs/03-eval-harness.md) - the scorers, the judge rubric, the metrics
 4. [Demo walkthrough](docs/04-demo-walkthrough.md) - reading the output, three variants compared
 5. [Defense layers](docs/05-defense-layers.md) - middleware guardrails, and what a prompt cannot hold
+
+## Second demo: UiPath guardrails
+
+[`uipath-guardrails/`](uipath-guardrails/README.md) is the same problem from the
+enforcement side, on the UiPath stack. A `uipath-langchain` intake agent detects
+custom PHI entities - MRN, member ID, NPI, ICD-10, CPT, HCPCS, auth case number,
+DOB - that the built-in PII guardrail does not cover, and enforces them per tool
+through `UiPathDeterministicGuardrailMiddleware`: redact on the way in from an
+untrusted fax, log on the approved path to the payer, block on the outbound email.
+
+Runs offline with `uv run verify.py`; the agent itself needs a UiPath auth target.
 
 ## The headline
 

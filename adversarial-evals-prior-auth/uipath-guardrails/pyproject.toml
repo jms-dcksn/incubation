@@ -1,0 +1,9 @@
+[project]
+name = "uipath-phi-guardrails"
+version = "0.1.0"
+description = "Custom PHI guardrails for a UiPath LangChain prior-authorization intake agent."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "uipath-langchain>=0.17.1",
+]
