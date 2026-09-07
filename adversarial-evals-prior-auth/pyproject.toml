@@ -1,0 +1,13 @@
+[project]
+name = "adversarial-evals-prior-auth"
+version = "0.1.0"
+description = "Adversarial and red-team evaluations for a prior-authorization intake agent."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain>=1.0",
+    "python-dotenv>=1.0.1",
+]
+
+[project.optional-dependencies]
+anthropic = ["langchain-anthropic>=1.0"]
